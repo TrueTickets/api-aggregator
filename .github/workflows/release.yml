@@ -39,6 +39,7 @@ jobs:
 
             - name: Import GPG key
               uses: crazy-max/ghaction-import-gpg@v6
+              id: import_gpg
               with:
                   gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
                   passphrase: ${{ secrets.GPG_PASSPHRASE }}
@@ -51,5 +52,5 @@ jobs:
                   args: release --clean
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  GPG_FINGERPRINT: ${{ secrets.GPG_FINGERPRINT }}
+                  GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
                   DOCKER_CLI_EXPERIMENTAL: enabled

@@ -1,4 +1,6 @@
 ---
+version: 2
+
 project_name: api-aggregator
 
 env:
@@ -33,12 +35,10 @@ builds:
 
 archives:
     - id: api-aggregator
-      builds:
-          - api-aggregator
-      format: tar.gz
+      formats: [tar.gz]
       format_overrides:
           - goos: windows
-            format: zip
+            formats: [zip]
       name_template:
           "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm
           }}v{{ .Arm }}{{ end }}"
@@ -62,7 +62,7 @@ signs:
           - "${artifact}"
 
 snapshot:
-    name_template: "{{ incpatch .Version }}-next"
+    version_template: "{{ incpatch .Version }}-next"
 
 changelog:
     sort: asc
