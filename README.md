@@ -389,7 +389,7 @@ go tool cover -html=coverage.out
 
 ```bash
 # Run golangci-lint (from repository root)
-./golinter.py run svc/api-aggregator
+make lint
 ```
 
 ## Architecture
