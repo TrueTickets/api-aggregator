@@ -1,0 +1,40 @@
+---
+services:
+    api-aggregator:
+        build:
+            args: {}
+            context: .
+            platforms:
+                - linux/amd64
+        ports:
+            - "10400:8080"
+        environment:
+            - API_AGGREGATOR_CONFIG_PATH=/app/config.yaml
+            - API_AGGREGATOR_LOG_LEVEL=trace
+            - API_AGGREGATOR_TRACING_ENABLED=false
+            - API_AGGREGATOR_METRICS_ENABLED=false
+        volumes:
+            - ./config.yaml:/app/config.yaml:ro
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8080/livez"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+        restart: unless-stopped
+        networks:
+            - api-network
+
+    # Example backend service for testing
+    mock-backend:
+        image: nginx:alpine
+        ports:
+            - "10401:80"
+        volumes:
+            - ./test/mock-responses:/usr/share/nginx/html:ro
+        networks:
+            - api-network
+
+networks:
+    api-network:
+        driver: bridge

@@ -1,0 +1,23 @@
+---
+test_name: Test targeting (capturing) functionality
+
+strict:
+    - json:off
+
+stages:
+    - name: Test target extraction from products wrapper
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/all-products"
+          method: GET
+      response:
+          status_code: 200
+          headers:
+              content-type: application/json
+              x-api-aggregation-completed: "true"
+          json:
+              # Should be a list of 5 products with at least id field
+              - id: !anyint
+              - id: !anyint
+              - id: !anyint
+              - id: !anyint
+              - id: !anyint

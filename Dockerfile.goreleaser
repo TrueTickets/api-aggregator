@@ -1,0 +1,26 @@
+FROM alpine:3
+
+# We're not going to pin a specific version of ca-certificates here
+# hadolint ignore=DL3018
+RUN set -ex; \
+    apk add --no-cache ca-certificates && \
+    addgroup -g 1001 -S api-aggregator && \
+    adduser -u 1001 -S api-aggregator -G api-aggregator \
+            --home /opt/api-aggregator
+
+WORKDIR /opt/api-aggregator
+
+# Copy pre-built binary from GoReleaser
+COPY api-aggregator ./
+
+# Copy default configuration
+COPY config.yaml ./
+
+# Ensure binary is executable
+RUN chmod +x ./api-aggregator
+
+USER api-aggregator
+
+EXPOSE 8080
+
+CMD ["./api-aggregator"]

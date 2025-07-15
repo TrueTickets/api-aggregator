@@ -1,0 +1,37 @@
+---
+test_name: Test grouping functionality
+
+strict:
+    - json:off
+
+stages:
+    - name: Test grouped responses
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/user-data/1"
+          method: GET
+      response:
+          status_code: 200
+          headers:
+              content-type: application/json
+              x-api-aggregation-completed: "true"
+          json:
+              user:
+                  id: 1
+                  firstName: !anystr
+                  lastName: !anystr
+                  email: !anystr
+              posts:
+                  posts: !anylist
+              comments:
+                  comments: !anylist
+
+    - name: Verify grouping structure
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/user-data/2"
+          method: GET
+      response:
+          status_code: 200
+          json:
+              user: !anydict
+              posts: !anydict
+              comments: !anydict

@@ -1,0 +1,27 @@
+---
+test_name: Test deny list filtering functionality
+
+strict:
+    - json:off
+
+stages:
+    - name: Test deny list filtering
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/users-filtered/1"
+          method: GET
+      response:
+          status_code: 200
+          headers:
+              content-type: application/json
+              x-api-aggregation-completed: "true"
+          json:
+              id: !anyint
+              firstName: !anystr
+              lastName: !anystr
+              email: !anystr
+              age: !anyint
+
+              address:
+                  address: !anystr
+                  city: !anystr
+                  state: !anystr

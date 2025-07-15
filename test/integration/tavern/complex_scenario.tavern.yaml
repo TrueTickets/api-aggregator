@@ -1,0 +1,67 @@
+---
+test_name: Test complex scenario with multiple transformations
+
+strict:
+    - json:off
+
+stages:
+    - name: Test complex transformations
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/complex-user/1"
+          method: GET
+      response:
+          status_code: 200
+          headers:
+              content-type: application/json
+              x-api-aggregation-completed: "true"
+          json:
+              profile:
+                  id: 1
+                  first_name: !anystr # mapped from firstName
+
+
+                  last_name: !anystr # mapped from lastName
+
+
+                  email: !anystr
+                  age: !anyint
+              content:
+                  - id: !anyint
+                    post_title: !anystr # mapped from title
+
+
+                    post_content: !anystr # mapped from body
+
+
+                    tags: !anylist
+
+    - name: Verify no original field names exist
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/complex-user/2"
+          method: GET
+      response:
+          status_code: 200
+          verify_response_with:
+              function: tavern.helpers:validate_content
+              extra_kwargs:
+                  comparisons:
+                      # Verify mapped fields exist
+                      - jmespath: "profile.first_name"
+                        operator: "ne"
+                        expected: null
+                      - jmespath: "profile.last_name"
+                        operator: "ne"
+                        expected: null
+                      # Verify original field names don't exist
+                      - jmespath: "profile.firstName"
+                        operator: "eq"
+                        expected: null
+                      - jmespath: "profile.lastName"
+                        operator: "eq"
+                        expected: null
+                      - jmespath: "content[0].title"
+                        operator: "eq"
+                        expected: null
+                      - jmespath: "content[0].body"
+                        operator: "eq"
+                        expected: null

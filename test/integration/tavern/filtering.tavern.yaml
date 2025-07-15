@@ -1,0 +1,53 @@
+---
+test_name: Test filtering functionality
+
+strict:
+    - json:off
+
+stages:
+    - name: Test allow list filtering
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/products/1"
+          method: GET
+      response:
+          status_code: 200
+          headers:
+              content-type: application/json
+              x-api-aggregation-completed: "true"
+          json:
+              id: !anyint
+              title: !anystr
+              price: !anyfloat
+              category: !anystr
+          verify_response_with:
+              function: tavern.helpers:validate_pykwalify
+              extra_kwargs:
+                  schema:
+                      type: map
+                      required: true
+                      mapping:
+                          id:
+                              type: int
+                              required: true
+                          title:
+                              type: str
+                              required: true
+                          price:
+                              type: float
+                              required: true
+                          category:
+                              type: str
+                              required: true
+                      # Only the specified fields should be present
+
+    - name: Test filtering on different product
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/products/5"
+          method: GET
+      response:
+          status_code: 200
+          json:
+              id: 5
+              title: !anystr
+              price: !anyfloat
+              category: !anystr

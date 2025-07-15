@@ -1,0 +1,26 @@
+---
+test_name: Test timeout and partial response functionality
+
+strict:
+    - json:off
+
+stages:
+    - name: Test timeout handling with partial responses
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/timeout-test/1"
+          method: GET
+      response:
+          status_code: 500
+          headers:
+              content-type: application/json
+          json: !anydict
+
+    - name: Test timeout with different user
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/timeout-test/3"
+          method: GET
+      response:
+          status_code: 500
+          headers:
+              content-type: application/json
+          json: !anydict

@@ -1,0 +1,44 @@
+---
+test_name: Test concat functionality
+
+strict:
+    - json:off
+
+stages:
+    - name: Test concat functionality - multiple backends to same array
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/user-activities/1"
+          method: GET
+      response:
+          status_code: 200
+          headers:
+              content-type: application/json
+              x-api-aggregation-completed: "true"
+          json:
+              activities: !anylist
+
+    - name: Test mixed concat and grouping
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/user-mixed/1"
+          method: GET
+      response:
+          status_code: 200
+          headers:
+              content-type: application/json
+              x-api-aggregation-completed: "true"
+          json:
+              profile:
+                  id: 1
+                  firstName: !anystr
+                  lastName: !anystr
+                  email: !anystr
+              content_items: !anylist
+
+    - name: Verify concat array contains multiple items
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/user-activities/1"
+          method: GET
+      response:
+          status_code: 200
+          json:
+              activities: !anylist

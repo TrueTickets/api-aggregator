@@ -1,0 +1,37 @@
+# Binaries
+api-aggregator
+*.exe
+
+# Test files (but keep integration config)
+*_test.go
+test/*
+!test/integration/config.yaml
+coverage.out
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Logs
+*.log
+
+# Dependencies (will be downloaded during build)
+vendor/

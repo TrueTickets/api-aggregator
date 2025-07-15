@@ -1,0 +1,44 @@
+timeout: 10s
+port: "8080"
+log_level: "info"
+shutdown_timeout: 15s
+tracing_enabled: false
+metrics_enabled: false
+service_name: "api-aggregator"
+
+endpoints:
+    - endpoint: "/users/{user}"
+      method: GET
+      timeout: 800ms
+      backends:
+          - url_pattern: "/users/{user}"
+            host: "https://jsonplaceholder.typicode.com"
+          - url_pattern: "/posts"
+            host: "https://jsonplaceholder.typicode.com"
+            allow:
+                - "userId"
+                - "id"
+                - "title"
+                - "body"
+
+    - endpoint: "/abc"
+      timeout: 800ms
+      method: GET
+      backends:
+          - url_pattern: "/users/1"
+            encoding: json
+            host: "https://jsonplaceholder.typicode.com"
+            group: "user_data"
+            remove_headers:
+                - "X-Custom-Header"
+                - "Authorization"
+          - url_pattern: "/posts/1"
+            encoding: json
+            host: "https://jsonplaceholder.typicode.com"
+            group: "post_data"
+          - url_pattern: "/comments/1"
+            encoding: json
+            host: "https://jsonplaceholder.typicode.com"
+            group: "comment_data"
+            remove_headers:
+                - "User-Agent"

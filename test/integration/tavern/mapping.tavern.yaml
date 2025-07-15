@@ -1,0 +1,62 @@
+---
+test_name: Test field mapping functionality
+
+strict:
+    - json:off
+
+stages:
+    - name: Test field mapping
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/product-info/1"
+          method: GET
+      response:
+          status_code: 200
+          headers:
+              content-type: application/json
+              x-api-aggregation-completed: "true"
+          json:
+              id: !anyint
+              product_name: !anystr # mapped from title
+
+
+              cost: !anyfloat # mapped from price
+
+
+              discount: !anyfloat # mapped from discountPercentage
+
+
+              product_category: !anystr # mapped from category
+
+
+          verify_response_with:
+              function: tavern.helpers:validate_pykwalify
+              extra_kwargs:
+                  schema:
+                      type: map
+                      required: true
+                      mapping:
+                          id:
+                              type: int
+                              required: true
+                          product_name:
+                              type: str
+                              required: true
+                          cost:
+                              type: float
+                              required: true
+                          discount:
+                              type: float
+                              required: true
+                          product_category:
+                              type: str
+                              required: true
+
+    - name: Verify no original field names exist
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/product-info/2"
+          method: GET
+      response:
+          status_code: 200
+          json:
+              product_name: !anystr
+              cost: !anyfloat

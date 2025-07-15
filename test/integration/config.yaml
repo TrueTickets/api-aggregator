@@ -1,0 +1,225 @@
+---
+endpoints:
+    # Basic merge functionality
+    - endpoint: /users/{id}
+      method: GET
+      timeout: 5s
+      encoding: json
+      backends:
+          - host: https://dummyjson.com
+            url_pattern: /users/{id}
+            encoding: json
+          - host: https://dummyjson.com
+            url_pattern: /posts/user/{id}
+            encoding: json
+            group: posts
+
+    # Field filtering with allow lists
+    - endpoint: /products/{id}
+      method: GET
+      timeout: 5s
+      encoding: json
+      backends:
+          - host: https://dummyjson.com
+            url_pattern: /products/{id}
+            encoding: json
+            allow:
+                - id
+                - title
+                - price
+                - category
+
+    # Response grouping
+    - endpoint: /user-data/{id}
+      method: GET
+      timeout: 5s
+      encoding: json
+      backends:
+          - host: https://dummyjson.com
+            url_pattern: /users/{id}
+            encoding: json
+            group: user
+          - host: https://dummyjson.com
+            url_pattern: /posts/user/{id}
+            encoding: json
+            group: posts
+          - host: https://dummyjson.com
+            url_pattern: /comments?limit=5
+            encoding: json
+            group: comments
+
+    # Field mapping
+    - endpoint: /product-info/{id}
+      method: GET
+      timeout: 5s
+      encoding: json
+      backends:
+          - host: https://dummyjson.com
+            url_pattern: /products/{id}
+            encoding: json
+            allow:
+                - id
+                - title
+                - price
+                - discountPercentage
+                - category
+            mapping:
+                title: product_name
+                price: cost
+                discountPercentage: discount
+                category: product_category
+
+    # Target extraction
+    - endpoint: /all-products
+      method: GET
+      timeout: 5s
+      encoding: json
+      backends:
+          - host: https://dummyjson.com
+            url_pattern: /products?limit=5
+            encoding: json
+            target: products
+
+    # Deny list filtering
+    - endpoint: /users-filtered/{id}
+      method: GET
+      timeout: 5s
+      encoding: json
+      backends:
+          - host: https://dummyjson.com
+            url_pattern: /users/{id}
+            encoding: json
+            deny:
+                - password
+                - bank
+                - ssn
+                - ein
+                - address.coordinates
+
+    # Complex scenario with multiple transformations
+    - endpoint: /complex-user/{id}
+      method: GET
+      timeout: 5s
+      encoding: json
+      backends:
+          - host: https://dummyjson.com
+            url_pattern: /users/{id}
+            encoding: json
+            group: profile
+            allow:
+                - id
+                - firstName
+                - lastName
+                - email
+                - age
+            mapping:
+                firstName: first_name
+                lastName: last_name
+          - host: https://dummyjson.com
+            url_pattern: /posts/user/{id}
+            encoding: json
+            group: content
+            target: posts
+            allow:
+                - id
+                - title
+                - body
+                - tags
+            mapping:
+                title: post_title
+                body: post_content
+
+    # Timeout testing with very short timeout
+    - endpoint: /timeout-test/{id}
+      method: GET
+      timeout: 5ms
+      encoding: json
+      backends:
+          - host: https://dummyjson.com
+            url_pattern: /users/{id}
+            encoding: json
+            group: user
+          - host: https://dummyjson.com
+            url_pattern: /posts/user/{id}
+            encoding: json
+            group: posts
+          - host: https://dummyjson.com
+            url_pattern: /comments?limit=5
+            encoding: json
+            group: comments
+
+    # Concat functionality - appending responses to arrays
+    - endpoint: /user-activities/{id}
+      method: GET
+      timeout: 5s
+      encoding: json
+      backends:
+          - host: https://dummyjson.com
+            url_pattern: /posts/user/{id}
+            encoding: json
+            concat: activities
+            target: posts
+            allow:
+                - id
+                - title
+                - body
+                - tags
+            mapping:
+                title: activity_title
+                body: activity_content
+          - host: https://dummyjson.com
+            url_pattern: /todos/user/{id}
+            encoding: json
+            concat: activities
+            target: todos
+            allow:
+                - id
+                - todo
+                - completed
+            mapping:
+                todo: activity_title
+          - host: https://dummyjson.com
+            url_pattern: /users/{id}/carts
+            encoding: json
+            concat: activities
+            target: carts
+            allow:
+                - id
+                - total
+                - totalProducts
+            mapping:
+                total: activity_content
+
+    # Mixed concat and grouping
+    - endpoint: /user-mixed/{id}
+      method: GET
+      timeout: 5s
+      encoding: json
+      backends:
+          - host: https://dummyjson.com
+            url_pattern: /users/{id}
+            encoding: json
+            group: profile
+            allow:
+                - id
+                - firstName
+                - lastName
+                - email
+          - host: https://dummyjson.com
+            url_pattern: /posts/user/{id}
+            encoding: json
+            concat: content_items
+            target: posts
+            allow:
+                - id
+                - title
+                - body
+          - host: https://dummyjson.com
+            url_pattern: /todos/user/{id}
+            encoding: json
+            concat: content_items
+            target: todos
+            allow:
+                - id
+                - todo
+                - completed

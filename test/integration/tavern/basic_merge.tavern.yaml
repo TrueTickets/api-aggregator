@@ -1,0 +1,40 @@
+---
+test_name: Test basic merge functionality
+
+strict:
+    - json:off
+
+stages:
+    - name: Test user data merge with posts
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/users/1"
+          method: GET
+      response:
+          status_code: 200
+          headers:
+              content-type: application/json
+              x-api-aggregation-completed: "true"
+          json:
+              id: 1
+              firstName: !anystr
+              lastName: !anystr
+              email: !anystr
+              posts:
+                  posts: !anylist
+
+    - name: Test user data merge with different user
+      request:
+          url: "{tavern.env_vars.API_BASE_URL}/users/2"
+          method: GET
+      response:
+          status_code: 200
+          headers:
+              content-type: application/json
+              x-api-aggregation-completed: "true"
+          json:
+              id: 2
+              firstName: !anystr
+              lastName: !anystr
+              email: !anystr
+              posts:
+                  posts: !anylist

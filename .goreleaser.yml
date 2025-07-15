@@ -1,0 +1,141 @@
+---
+project_name: api-aggregator
+
+env:
+    - GO111MODULE=on
+    - CGO_ENABLED=0
+
+before:
+    hooks:
+        - go mod tidy
+        - go mod download
+
+builds:
+    - id: api-aggregator
+      main: ./cmd/api-aggregator
+      binary: api-aggregator
+      goos:
+          - linux
+          - darwin
+          - windows
+      goarch:
+          - amd64
+          - arm64
+          - arm
+      ldflags:
+          - -s -w
+          - -X
+            github.com/TrueTickets/api-aggregator/internal/build.ServiceVersion={{.Version}}
+          - -X
+            github.com/TrueTickets/api-aggregator/internal/build.GitCommit={{.Commit}}
+          - -X
+            github.com/TrueTickets/api-aggregator/internal/build.BuildDate={{.Date}}
+
+archives:
+    - id: api-aggregator
+      builds:
+          - api-aggregator
+      format: tar.gz
+      format_overrides:
+          - goos: windows
+            format: zip
+      name_template:
+          "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm
+          }}v{{ .Arm }}{{ end }}"
+      files:
+          - README.md
+          - LICENSE
+          - config.yaml
+
+checksum:
+    name_template: "checksums.txt"
+
+signs:
+    - artifacts: checksum
+      args:
+          - "--batch"
+          - "--local-user"
+          - "{{ .Env.GPG_FINGERPRINT }}"
+          - "--output"
+          - "${signature}"
+          - "--detach-sign"
+          - "${artifact}"
+
+snapshot:
+    name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+    sort: asc
+    filters:
+        exclude:
+            - "^docs:"
+            - "^test:"
+            - "^ci:"
+            - "^chore:"
+            - "^build:"
+            - Merge pull request
+            - Merge branch
+
+dockers:
+    - id: api-aggregator-amd64
+      image_templates:
+          - "ghcr.io/truetickets/api-aggregator:{{ .Version }}-amd64"
+          - "ghcr.io/truetickets/api-aggregator:latest-amd64"
+      dockerfile: Dockerfile.goreleaser
+      use: buildx
+      build_flag_templates:
+          - "--platform=linux/amd64"
+          - "--label=org.opencontainers.image.created={{.Date}}"
+          - "--label=org.opencontainers.image.title={{.ProjectName}}"
+          - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+          - "--label=org.opencontainers.image.version={{.Version}}"
+          - "--label=org.opencontainers.image.source={{.GitURL}}"
+          - "--label=org.opencontainers.image.licenses=MIT"
+      extra_files:
+          - config.yaml
+
+docker_manifests:
+    - name_template: "ghcr.io/truetickets/api-aggregator:{{ .Version }}"
+      image_templates:
+          - "ghcr.io/truetickets/api-aggregator:{{ .Version }}-amd64"
+    - name_template: "ghcr.io/truetickets/api-aggregator:latest"
+      image_templates:
+          - "ghcr.io/truetickets/api-aggregator:latest-amd64"
+
+release:
+    github:
+        owner: TrueTickets
+        name: api-aggregator
+    draft: false
+    prerelease: auto
+    mode: replace
+    header: |
+        ## API Aggregator {{ .Version }}
+
+        Welcome to this new release of API Aggregator! 🚀
+
+    footer: |
+        ## Docker Images
+
+        Docker images are available at:
+        - `ghcr.io/truetickets/api-aggregator:{{ .Version }}`
+        - `ghcr.io/truetickets/api-aggregator:latest`
+
+        ## Installation
+
+        ### Binary Installation
+
+        Download the appropriate binary for your platform from the assets below and place it in your PATH.
+
+        ### Docker
+
+        ```bash
+        docker run -p 8080:8080 -v $(pwd)/config.yaml:/app/config.yaml ghcr.io/truetickets/api-aggregator:{{ .Version }}
+        ```
+
+        ### Configuration
+
+        See the [README](https://github.com/TrueTickets/api-aggregator/blob/main/README.md) for configuration options.
+
+    extra_files:
+        - glob: ./config.yaml

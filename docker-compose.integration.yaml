@@ -1,0 +1,46 @@
+---
+services:
+    api-aggregator:
+        build:
+            args: {}
+            context: .
+            dockerfile: Dockerfile
+            platforms:
+                - linux/amd64
+        ports:
+            - "1400:8080"
+        environment:
+            - API_AGGREGATOR_CONFIG_PATH=/app/config.yaml
+            - API_AGGREGATOR_LOG_LEVEL=debug
+        volumes:
+            - ./test/integration/config.yaml:/app/config.yaml:ro
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8080/livez"]
+            interval: 5s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
+        networks:
+            - integration-test
+
+    tavern:
+        build:
+            context: test/integration/tavern
+        depends_on:
+            api-aggregator:
+                condition: service_healthy
+        environment:
+            - API_BASE_URL=http://api-aggregator:8080
+        volumes:
+            - ./test/integration/tavern:/tests
+        networks:
+            - integration-test
+        command:
+            - python
+            - -m
+            - pytest
+            - /tests
+
+networks:
+    integration-test:
+        driver: bridge
