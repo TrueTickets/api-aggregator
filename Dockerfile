@@ -25,7 +25,10 @@ RUN go build -o ../../api-aggregator -ldflags \
 #######################################################################
 FROM alpine:3 AS runtime
 
+# We're not going to pin a specific version of ca-certificates here
+# hadolint ignore=DL3018
 RUN set -ex; \
+    apk add --no-cache ca-certificates curl libc6-compat && \
     addgroup -g 1001 -S api-aggregator && \
     adduser -u 1001 -S api-aggregator -G api-aggregator \
             --home /opt/api-aggregator
@@ -40,6 +43,7 @@ COPY --chown=api-aggregator:api-aggregator \
 COPY --chown=api-aggregator:api-aggregator \
      config.yaml ./
 
+EXPOSE 8080
 USER api-aggregator
 
-CMD ["./api-aggregator"]
+CMD ["/opt/api-aggregator/api-aggregator"]

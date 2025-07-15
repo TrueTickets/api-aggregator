@@ -7,7 +7,7 @@ services:
             platforms:
                 - linux/amd64
         ports:
-            - "10400:8080"
+            - "8080:8080"
         environment:
             - API_AGGREGATOR_CONFIG_PATH=/app/config.yaml
             - API_AGGREGATOR_LOG_LEVEL=trace
