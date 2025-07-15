@@ -1,0 +1,142 @@
+---
+name: 🐛 Bug Report
+description: Report a bug to help us improve the API Aggregator
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to fill out this bug report! Please provide as much detail as possible.
+
+    - type: textarea
+      id: description
+      attributes:
+          label: Bug Description
+          description: A clear and concise description of what the bug is.
+          placeholder: Describe the issue you're experiencing...
+      validations:
+          required: true
+
+    - type: textarea
+      id: reproduction
+      attributes:
+          label: Steps to Reproduce
+          description: Steps to reproduce the behavior
+          placeholder: |
+              1. Configure endpoint with '...'
+              2. Send request to '...'
+              3. See error
+      validations:
+          required: true
+
+    - type: textarea
+      id: expected
+      attributes:
+          label: Expected Behavior
+          description: What you expected to happen
+          placeholder: Describe what should have happened...
+      validations:
+          required: true
+
+    - type: textarea
+      id: actual
+      attributes:
+          label: Actual Behavior
+          description: What actually happened
+          placeholder: Describe what actually happened...
+      validations:
+          required: true
+
+    - type: textarea
+      id: configuration
+      attributes:
+          label: Configuration
+          description:
+              Your API Aggregator configuration (sanitize any sensitive data)
+          placeholder: |
+              ```yaml
+              # Paste your config.yaml here (remove sensitive data)
+              timeout: 10s
+              port: "8080"
+              endpoints:
+                - endpoint: "/example"
+                  # ...
+              ```
+          render: yaml
+
+    - type: textarea
+      id: logs
+      attributes:
+          label: Logs
+          description: Relevant log output (sanitize any sensitive data)
+          placeholder: |
+              ```
+              Paste relevant logs here
+              ```
+          render: text
+
+    - type: input
+      id: version
+      attributes:
+          label: API Aggregator Version
+          description: What version of API Aggregator are you using?
+          placeholder: v1.0.0, latest, commit hash, etc.
+      validations:
+          required: true
+
+    - type: dropdown
+      id: deployment
+      attributes:
+          label: Deployment Method
+          description: How are you running API Aggregator?
+          options:
+              - Docker
+              - Docker Compose
+              - Kubernetes
+              - Binary (direct)
+              - Other
+      validations:
+          required: true
+
+    - type: textarea
+      id: environment
+      attributes:
+          label: Environment
+          description: Environment details
+          placeholder: |
+              - OS: [e.g., Ubuntu 20.04, macOS 12, Windows 10]
+              - Go version: [if building from source]
+              - Docker version: [if using Docker]
+              - Architecture: [e.g., amd64, arm64]
+          value: |
+              - OS:
+              - Go version:
+              - Docker version:
+              - Architecture:
+      validations:
+          required: true
+
+    - type: textarea
+      id: additional
+      attributes:
+          label: Additional Context
+          description: Any other context about the problem
+          placeholder:
+              Add any other context, screenshots, or additional information
+              here...
+
+    - type: checkboxes
+      id: terms
+      attributes:
+          label: Checklist
+          description: Please confirm the following
+          options:
+              - label: I have searched existing issues to avoid duplicates
+                required: true
+              - label: I have provided all requested information
+                required: true
+              - label: I have sanitized any sensitive data from logs/config
+                required: true

@@ -1,0 +1,72 @@
+# Configuration for PR labeler based on files changed
+# https://github.com/actions/labeler
+---
+area/config:
+    - changed-files:
+          - any-glob-to-any-file: ["config.yaml", "config/**/*", "**/*config*"]
+
+area/transformation:
+    - changed-files:
+          - any-glob-to-any-file:
+                ["internal/transformer/**/*", "internal/merger/**/*"]
+
+area/client:
+    - changed-files:
+          - any-glob-to-any-file: ["internal/client/**/*"]
+
+area/server:
+    - changed-files:
+          - any-glob-to-any-file:
+                ["internal/server/**/*", "cmd/api-aggregator/**/*"]
+
+area/telemetry:
+    - changed-files:
+          - any-glob-to-any-file:
+                ["internal/telemetry/**/*", "cmd/api-aggregator/telemetry.go"]
+
+area/docker:
+    - changed-files:
+          - any-glob-to-any-file:
+                ["Dockerfile*", "docker-compose*.yaml", ".dockerignore"]
+
+area/ci-cd:
+    - changed-files:
+          - any-glob-to-any-file:
+                [".github/workflows/**/*", ".github/actions/**/*"]
+
+area/docs:
+    - changed-files:
+          - any-glob-to-any-file:
+                [
+                    "*.md",
+                    "docs/**/*",
+                    ".github/ISSUE_TEMPLATE/**/*",
+                    ".github/pull_request_template.md",
+                ]
+
+test:
+    - changed-files:
+          - any-glob-to-any-file: ["**/*_test.go", "test/**/*", "Makefile"]
+
+dependencies:
+    - changed-files:
+          - any-glob-to-any-file: ["go.mod", "go.sum", ".github/workflows/**/*"]
+
+documentation:
+    - changed-files:
+          - any-glob-to-any-file: ["*.md", "docs/**/*", "internal/**/*.go"]
+            all-globs-to-all-files: ["internal/**/*.go"]
+
+security:
+    - changed-files:
+          - any-glob-to-any-file:
+                ["internal/client/**/*", "internal/server/**/*", "go.mod"]
+
+performance:
+    - changed-files:
+          - any-glob-to-any-file:
+                [
+                    "internal/client/**/*",
+                    "internal/merger/**/*",
+                    "internal/transformer/**/*",
+                ]

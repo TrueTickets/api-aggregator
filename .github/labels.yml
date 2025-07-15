@@ -1,0 +1,178 @@
+# GitHub Labels Configuration
+# This file can be used with tools like github-labeler-action
+
+# Type Labels
+---
+- name: "bug"
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: "enhancement"
+  color: "a2eeef"
+  description: "New feature or request"
+
+- name: "documentation"
+  color: "0075ca"
+  description: "Improvements or additions to documentation"
+
+- name: "question"
+  color: "d876e3"
+  description: "Further information is requested"
+
+- name: "security"
+  color: "b60205"
+  description: "Security-related issue or enhancement"
+
+- name: "performance"
+  color: "ff9500"
+  description: "Performance improvement"
+
+- name: "refactor"
+  color: "fbca04"
+  description: "Code refactoring"
+
+- name: "test"
+  color: "1d76db"
+  description: "Testing related"
+
+# Priority Labels
+- name: "priority/critical"
+  color: "b60205"
+  description: "Critical priority - needs immediate attention"
+
+- name: "priority/high"
+  color: "d93f0b"
+  description: "High priority"
+
+- name: "priority/medium"
+  color: "fbca04"
+  description: "Medium priority"
+
+- name: "priority/low"
+  color: "0e8a16"
+  description: "Low priority"
+
+# Status Labels
+- name: "needs-triage"
+  color: "ededed"
+  description: "Needs initial triage and labeling"
+
+- name: "needs-info"
+  color: "d4c5f9"
+  description: "More information needed from reporter"
+
+- name: "in-progress"
+  color: "0052cc"
+  description: "Currently being worked on"
+
+- name: "blocked"
+  color: "b60205"
+  description: "Blocked by external dependency"
+
+- name: "ready-for-review"
+  color: "0e8a16"
+  description: "Ready for code review"
+
+- name: "changes-requested"
+  color: "d93f0b"
+  description: "Changes requested in review"
+
+# Area Labels
+- name: "area/config"
+  color: "c2e0c6"
+  description: "Configuration and settings"
+
+- name: "area/transformation"
+  color: "c2e0c6"
+  description: "Response transformation features"
+
+- name: "area/client"
+  color: "c2e0c6"
+  description: "HTTP client and backend communication"
+
+- name: "area/server"
+  color: "c2e0c6"
+  description: "HTTP server and routing"
+
+- name: "area/telemetry"
+  color: "c2e0c6"
+  description: "Observability, tracing, and metrics"
+
+- name: "area/docker"
+  color: "c2e0c6"
+  description: "Docker and containerization"
+
+- name: "area/ci-cd"
+  color: "c2e0c6"
+  description: "Continuous integration and deployment"
+
+- name: "area/docs"
+  color: "c2e0c6"
+  description: "Documentation"
+
+# Size Labels (for effort estimation)
+- name: "size/xs"
+  color: "3cbf00"
+  description: "Extra small change - < 1 hour"
+
+- name: "size/s"
+  color: "5d9cec"
+  description: "Small change - 1-4 hours"
+
+- name: "size/m"
+  color: "ffb300"
+  description: "Medium change - 4-8 hours"
+
+- name: "size/l"
+  color: "ff6900"
+  description: "Large change - 1-2 days"
+
+- name: "size/xl"
+  color: "e11d21"
+  description: "Extra large change - > 2 days"
+
+# Special Labels
+- name: "good first issue"
+  color: "7057ff"
+  description: "Good for newcomers"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Extra attention is needed"
+
+- name: "breaking-change"
+  color: "b60205"
+  description: "Breaking change that affects compatibility"
+
+- name: "dependencies"
+  color: "0366d6"
+  description: "Pull requests that update a dependency file"
+
+- name: "duplicate"
+  color: "cfd3d7"
+  description: "This issue or pull request already exists"
+
+- name: "invalid"
+  color: "e4e669"
+  description: "This doesn't seem right"
+
+- name: "wontfix"
+  color: "ffffff"
+  description: "This will not be worked on"
+
+- name: "stale"
+  color: "fef2c0"
+  description: "Issue or PR has been inactive for a while"
+
+# Release Labels
+- name: "release/major"
+  color: "b60205"
+  description: "Major version release"
+
+- name: "release/minor"
+  color: "fbca04"
+  description: "Minor version release"
+
+- name: "release/patch"
+  color: "0e8a16"
+  description: "Patch version release"
