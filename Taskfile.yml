@@ -42,16 +42,16 @@ tasks:
         cmds:
             - cmd: echo "Running integration tests with Docker Compose..."
               silent: true
-            - docker compose -f {{.INTEGRATION_COMPOSE}} up --build --abort-on-container-exit
             - defer: docker compose -f {{.INTEGRATION_COMPOSE}} down
+            - docker compose -f {{.INTEGRATION_COMPOSE}} up --build --abort-on-container-exit
 
     integration-test-local:
         desc: Run integration tests locally (requires tavern)
         cmds:
             - cmd: echo "Building binary for local integration testing..."
               silent: true
-            - go build -o {{.BINARY_NAME}} {{.CMD_PATH}}
             - defer: { task: _kill-local-server }
+            - go build -o {{.BINARY_NAME}} {{.CMD_PATH}}
             - cmd: echo "Starting API aggregator with integration test config..."
               silent: true
             - cmd: API_AGGREGATOR_CONFIG_PATH={{.INTEGRATION_CONFIG}} ./{{.BINARY_NAME}} &
@@ -77,7 +77,8 @@ tasks:
             - rm -f {{.BINARY_NAME}}
 
     install-tools:
-        desc: Install required development tools
+        desc: Install required development tools (macOS)
+        platforms: [darwin]
         cmds:
             - brew install go-task golangci-lint
             - pip install "tavern[pytest]"
