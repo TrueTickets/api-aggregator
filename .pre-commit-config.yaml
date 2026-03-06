@@ -45,11 +45,11 @@ repos:
                 - //
                 - --use-current-year
           - id: remove-tabs
-            exclude: '\.go$|go.mod|Makefile$'
+            exclude: '\.go$|go.mod'
 
     - repo: https://github.com/pre-commit/mirrors-prettier
       rev: v3.0.0
       hooks:
           - id: prettier
             types_or: [markdown, yaml]
-            exclude: '\.md$'
+            exclude: '\.md$|Taskfile\.yml$'

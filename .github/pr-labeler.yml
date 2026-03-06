@@ -46,7 +46,7 @@ area/docs:
 
 test:
     - changed-files:
-          - any-glob-to-any-file: ["**/*_test.go", "test/**/*", "Makefile"]
+          - any-glob-to-any-file: ["**/*_test.go", "test/**/*", "Taskfile.yml"]
 
 dependencies:
     - changed-files:

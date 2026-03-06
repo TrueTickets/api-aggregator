@@ -58,5 +58,8 @@ dist/
 *.zip
 checksums.txt
 
+# Taskfile checksum cache
+.task/
+
 # Claude Code local settings
 .claude/*.local.*

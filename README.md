@@ -262,10 +262,10 @@ and DummyJSON:
 
 ```bash
 # Run all integration tests with Docker Compose (recommended)
-make integration-test
+task integration-test
 
 # Or run locally (requires Tavern: pip install tavern[pytest])
-make integration-test-local
+task integration-test-local
 ```
 
 The integration tests cover:
@@ -284,7 +284,7 @@ detailed information.
 
 ```bash
 # Run golangci-lint
-make lint
+task lint
 
 # Or directly
 golangci-lint run
@@ -389,7 +389,7 @@ go tool cover -html=coverage.out
 
 ```bash
 # Run golangci-lint (from repository root)
-make lint
+task lint
 ```
 
 ## Architecture

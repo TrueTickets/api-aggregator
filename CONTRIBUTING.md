@@ -31,7 +31,7 @@ We welcome several types of contributions:
 
 - **Go 1.23+**: Required for building the application
 - **Docker**: For containerized testing and development
-- **Make**: For running build commands
+- **Task**: For running build commands ([taskfile.dev](https://taskfile.dev))
 - **Git**: For version control
 
 ### Setting Up the Environment
@@ -45,7 +45,7 @@ cd api-aggregator
 go mod download
 
 # Install development tools
-make install-tools
+task install-tools
 
 # Set up pre-commit hooks
 pre-commit install
@@ -55,12 +55,12 @@ pre-commit install
 
 ```bash
 # Development workflow
-make dev                     # Build, test, and lint
-make build                   # Build binary
-make test                    # Run unit tests
-make lint                    # Run linting
-make integration-test        # Run integration tests
-make clean                   # Clean build artifacts
+task dev                     # Build, test, and lint
+task build                   # Build binary
+task test                    # Run unit tests
+task lint                    # Run linting
+task integration-test        # Run integration tests
+task clean                   # Clean build artifacts
 
 # Running the service
 ./api-aggregator             # Run with default config
@@ -177,11 +177,11 @@ Use the feature request template and include:
 
 ```bash
 # Unit tests
-make test
+task test
 go test ./...
 
 # Integration tests
-make integration-test
+task integration-test
 
 # Specific package tests
 go test ./internal/merger -v
