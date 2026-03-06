@@ -7,7 +7,7 @@
 
 #######################################################################
 
-FROM golang:1.23.11-bookworm AS build
+FROM golang:1.24.13-bookworm AS build
 
 WORKDIR /go/src/app/svc/api-aggregator
 COPY go.mod go.sum /go/src/app/
