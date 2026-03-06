@@ -77,10 +77,10 @@ tasks:
             - rm -f {{.BINARY_NAME}}
 
     install-tools:
-        desc: Install required development tools (macOS)
-        platforms: [darwin]
+        desc: Install required development tools
         cmds:
-            - brew install go-task golangci-lint
+            - go install github.com/go-task/task/v3/cmd/task@latest
+            - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
             - pip install "tavern[pytest]"
 
     check:
