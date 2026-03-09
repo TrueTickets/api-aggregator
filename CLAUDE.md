@@ -63,16 +63,16 @@ endpoints:
 
 ```bash
 # Development workflow
-make dev                     # Build, test, and lint
-make build                   # Build binary
-make test                    # Run unit tests
-make lint                    # Run golangci-lint
-make integration-test        # Run integration tests with Docker
-make clean                   # Clean build artifacts
+task dev                     # Build, test, and lint
+task build                   # Build binary
+task test                    # Run unit tests
+task lint                    # Run golangci-lint
+task integration-test        # Run integration tests with Docker
+task clean                   # Clean build artifacts
 
 # Testing
 go test ./...                # Unit tests
-make integration-test        # Full integration test suite
+task integration-test        # Full integration test suite
 ```
 
 ## Docker & Deployment

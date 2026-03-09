@@ -1,0 +1,92 @@
+# https://taskfile.dev
+version: "3"
+
+vars:
+    BINARY_NAME: api-aggregator
+    BIN_DIR: bin
+    CMD_PATH: ./cmd/api-aggregator
+    INTEGRATION_COMPOSE: docker-compose.integration.yaml
+    INTEGRATION_CONFIG: test/integration/config.yaml
+    TAVERN_DIR: test/integration/tavern
+
+tasks:
+    default:
+        desc: List all available tasks
+        cmds:
+            - task --list
+        silent: true
+
+    build:
+        desc: Build the api-aggregator binary
+        cmds:
+            - go build -o {{.BIN_DIR}}/{{.BINARY_NAME}} {{.CMD_PATH}}
+        sources:
+            - "**/*.go"
+            - go.mod
+            - go.sum
+        generates:
+            - "{{.BIN_DIR}}/{{.BINARY_NAME}}"
+
+    test:
+        desc: Run unit tests
+        cmds:
+            - go test ./... -v
+
+    lint:
+        desc: Run golangci-lint
+        cmds:
+            - golangci-lint run
+
+    integration-test:
+        desc: Run integration tests with Docker Compose
+        cmds:
+            - cmd: echo "Running integration tests with Docker Compose..."
+              silent: true
+            - defer: docker compose -f {{.INTEGRATION_COMPOSE}} down
+            - docker compose -f {{.INTEGRATION_COMPOSE}} up --build --abort-on-container-exit
+
+    integration-test-local:
+        desc: Run integration tests locally (requires tavern)
+        cmds:
+            - cmd: echo "Building binary for local integration testing..."
+              silent: true
+            - defer: { task: _kill-local-server }
+            - go build -o {{.BINARY_NAME}} {{.CMD_PATH}}
+            - cmd: echo "Starting API aggregator with integration test config..."
+              silent: true
+            - cmd: API_AGGREGATOR_CONFIG_PATH={{.INTEGRATION_CONFIG}} ./{{.BINARY_NAME}} &
+              silent: true
+            - cmd: echo "Waiting for service to start..."
+              silent: true
+            - sleep 3
+            - cmd: echo "Running integration tests..."
+              silent: true
+            - cmd: cd {{.TAVERN_DIR}} && API_BASE_URL=http://localhost:8080 pytest *.tavern.yaml -v
+
+    _kill-local-server:
+        internal: true
+        cmds:
+            - cmd: echo "Stopping service..."
+              silent: true
+            - pkill -f {{.BINARY_NAME}} || true
+
+    clean:
+        desc: Remove build artifacts
+        cmds:
+            - rm -f {{.BIN_DIR}}/{{.BINARY_NAME}}
+            - rm -f {{.BINARY_NAME}}
+
+    install-tools:
+        desc: Install required development tools
+        cmds:
+            - go install github.com/go-task/task/v3/cmd/task@latest
+            - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+            - pip install "tavern[pytest]"
+
+    check:
+        desc: Run all quality checks (lint, test, integration-test)
+        deps: [lint, test, integration-test]
+
+    dev:
+        desc: Development workflow (build, test, lint)
+        deps: [build, test, lint]

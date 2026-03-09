@@ -41,9 +41,9 @@
 
 ### Test Cases
 
-- [ ] Unit tests pass (`make test`)
-- [ ] Integration tests pass (`make integration-test`)
-- [ ] Linting passes (`make lint`)
+- [ ] Unit tests pass (`task test`)
+- [ ] Integration tests pass (`task integration-test`)
+- [ ] Linting passes (`task lint`)
 - [ ] Manual testing completed
 
 ### Test Details

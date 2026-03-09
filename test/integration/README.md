@@ -42,7 +42,7 @@ Tests require internet access to reach
 
 ```bash
 # From the root directory
-make integration-test
+task integration-test
 
 # Or run directly
 docker compose -f docker-compose.integration.yaml up --build --abort-on-container-exit
@@ -59,7 +59,7 @@ This approach:
 
 ```bash
 # From the root directory
-make integration-test-local
+task integration-test-local
 
 # Or manually:
 # 1. Start the service
@@ -248,7 +248,7 @@ For continuous integration, use Docker Compose for the simplest setup:
 
 ```bash
 # Example CI commands
-make integration-test
+task integration-test
 
 # Or directly
 docker compose -f docker-compose.integration.yaml up --build --abort-on-container-exit
