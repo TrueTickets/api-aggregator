@@ -1,16 +1,24 @@
-// Copyright (c) 2025 True Tickets, Inc.
+// Copyright (c) 2025-2026 True Tickets, Inc.
 // SPDX-License-Identifier: MIT
 
 package merger
 
 import (
 	"context"
+	"net/http"
 
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/TrueTickets/api-aggregator/internal/transformer"
 	"github.com/TrueTickets/api-aggregator/internal/types"
 )
+
+// MergeResult holds the result of merging backend responses
+type MergeResult struct {
+	Data         interface{}
+	AllCompleted bool
+	StatusCode   int
+}
 
 // Merger handles merging responses from multiple backends
 type Merger struct {
@@ -34,7 +42,7 @@ func New(cfg Config) *Merger {
 }
 
 // Merge merges multiple backend responses into a single response
-func (m *Merger) Merge(responses []types.BackendResponse) (interface{}, bool) {
+func (m *Merger) Merge(responses []types.BackendResponse) MergeResult {
 	ctx := context.Background()
 	_, span := m.tracer.Start(ctx, "merge_responses")
 	defer span.End()
@@ -43,6 +51,12 @@ func (m *Merger) Merge(responses []types.BackendResponse) (interface{}, bool) {
 	allCompleted := true
 	successfulResponses := 0
 
+	// Track status codes: use the lowest status code among responses
+	// that returned data. If all responses had no data (e.g. all 204),
+	// use the status code from the no-data responses.
+	dataStatusCode := 0
+	noDataStatusCode := 0
+
 	for _, resp := range responses {
 		if resp.Error != nil {
 			allCompleted = false
@@ -50,10 +64,19 @@ func (m *Merger) Merge(responses []types.BackendResponse) (interface{}, bool) {
 		}
 
 		if resp.Data == nil {
+			// Track status code from responses with no data (e.g. 204)
+			if resp.StatusCode > 0 && (noDataStatusCode == 0 || resp.StatusCode < noDataStatusCode) {
+				noDataStatusCode = resp.StatusCode
+			}
 			continue
 		}
 
 		successfulResponses++
+
+		// Track status code from responses with data
+		if resp.StatusCode > 0 && (dataStatusCode == 0 || resp.StatusCode < dataStatusCode) {
+			dataStatusCode = resp.StatusCode
+		}
 
 		// Process the response data through transformations
 		processedData := m.transformer.Transform(ctx, resp.Data, resp.Backend)
@@ -70,14 +93,35 @@ func (m *Merger) Merge(responses []types.BackendResponse) (interface{}, bool) {
 			// If we have only one successful response and no grouping,
 			// return the processed data directly (could be array, object, etc.)
 			if successfulResponses == 1 && len(responses) == 1 {
-				return processedData, allCompleted
+				return MergeResult{
+					Data:         processedData,
+					AllCompleted: allCompleted,
+					StatusCode:   m.resolveStatusCode(dataStatusCode, noDataStatusCode),
+				}
 			}
 			// Otherwise, merge into result map
 			m.mergeIntoResult(result, processedData)
 		}
 	}
 
-	return result, allCompleted
+	return MergeResult{
+		Data:         result,
+		AllCompleted: allCompleted,
+		StatusCode:   m.resolveStatusCode(dataStatusCode, noDataStatusCode),
+	}
+}
+
+// resolveStatusCode determines the final status code from backend responses.
+// Priority: status code from responses with data > status code from responses
+// without data > default 200 OK.
+func (m *Merger) resolveStatusCode(dataStatusCode, noDataStatusCode int) int {
+	if dataStatusCode > 0 {
+		return dataStatusCode
+	}
+	if noDataStatusCode > 0 {
+		return noDataStatusCode
+	}
+	return http.StatusOK
 }
 
 // appendToArray appends data to an array under the specified key in the result map

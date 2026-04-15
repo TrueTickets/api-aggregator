@@ -1,4 +1,4 @@
-// Copyright (c) 2025 True Tickets, Inc.
+// Copyright (c) 2025-2026 True Tickets, Inc.
 // SPDX-License-Identifier: MIT
 
 package client
@@ -66,6 +66,8 @@ func TestClient_Request_Logging(t *testing.T) {
 			// Verify result
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
+			assert.NotNil(t, result.Data)
+			assert.Equal(t, http.StatusOK, result.StatusCode)
 
 			// Check logging output
 			logOutput := logBuf.String()

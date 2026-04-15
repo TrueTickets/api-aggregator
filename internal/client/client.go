@@ -1,4 +1,4 @@
-// Copyright (c) 2025 True Tickets, Inc.
+// Copyright (c) 2025-2026 True Tickets, Inc.
 // SPDX-License-Identifier: MIT
 
 package client
@@ -48,6 +48,12 @@ type RequestConfig struct {
 	Body     io.Reader
 }
 
+// RequestResult holds the parsed response data along with HTTP metadata
+type RequestResult struct {
+	Data       interface{}
+	StatusCode int
+}
+
 // New creates a new client instance
 func New(cfg Config) *Client {
 	return &Client{
@@ -58,7 +64,7 @@ func New(cfg Config) *Client {
 }
 
 // Request makes an HTTP request and returns the parsed response
-func (c *Client) Request(ctx context.Context, cfg RequestConfig) (interface{}, error) {
+func (c *Client) Request(ctx context.Context, cfg RequestConfig) (*RequestResult, error) {
 	ctx, span := c.tracer.Start(ctx, fmt.Sprintf("backend_request_%s", cfg.URL))
 	defer span.End()
 
@@ -168,7 +174,7 @@ func (c *Client) setContentTypeHeader(req *http.Request, encoding string) {
 }
 
 // makeRequestAndHandleResponse executes the HTTP request and processes the response
-func (c *Client) makeRequestAndHandleResponse(req *http.Request, cfg RequestConfig) (interface{}, error) {
+func (c *Client) makeRequestAndHandleResponse(req *http.Request, cfg RequestConfig) (*RequestResult, error) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
@@ -195,8 +201,13 @@ func (c *Client) makeRequestAndHandleResponse(req *http.Request, cfg RequestConf
 		return nil, err
 	}
 
-	// Parse and return response
-	return c.parseResponse(body, cfg.Encoding)
+	// Parse and return response with status code
+	data, err := c.parseResponse(body, cfg.Encoding)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RequestResult{Data: data, StatusCode: resp.StatusCode}, nil
 }
 
 // logBackendResponse logs trace information for backend responses
@@ -253,7 +264,7 @@ func (c *Client) parseResponse(body []byte, encoding string) (interface{}, error
 }
 
 // Get makes a GET request
-func (c *Client) Get(ctx context.Context, url, encoding string, headers map[string]string) (interface{}, error) {
+func (c *Client) Get(ctx context.Context, url, encoding string, headers map[string]string) (*RequestResult, error) {
 	return c.Request(ctx, RequestConfig{
 		Method:   "GET",
 		URL:      url,
@@ -264,7 +275,7 @@ func (c *Client) Get(ctx context.Context, url, encoding string, headers map[stri
 
 // Post makes a POST request
 func (c *Client) Post(ctx context.Context, url, encoding string, headers map[string]string,
-	body io.Reader) (interface{}, error) {
+	body io.Reader) (*RequestResult, error) {
 	return c.Request(ctx, RequestConfig{
 		Method:   "POST",
 		URL:      url,
@@ -276,7 +287,7 @@ func (c *Client) Post(ctx context.Context, url, encoding string, headers map[str
 
 // Put makes a PUT request
 func (c *Client) Put(ctx context.Context, url, encoding string, headers map[string]string,
-	body io.Reader) (interface{}, error) {
+	body io.Reader) (*RequestResult, error) {
 	return c.Request(ctx, RequestConfig{
 		Method:   "PUT",
 		URL:      url,
@@ -287,7 +298,7 @@ func (c *Client) Put(ctx context.Context, url, encoding string, headers map[stri
 }
 
 // Delete makes a DELETE request
-func (c *Client) Delete(ctx context.Context, url, encoding string, headers map[string]string) (interface{}, error) {
+func (c *Client) Delete(ctx context.Context, url, encoding string, headers map[string]string) (*RequestResult, error) {
 	return c.Request(ctx, RequestConfig{
 		Method:   "DELETE",
 		URL:      url,
