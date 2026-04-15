@@ -167,7 +167,8 @@ endpoints:
 
 Each test validates:
 
-- **HTTP Status Codes**: 200 for successful requests
+- **HTTP Status Codes**: Preserved from backend responses (e.g. 200,
+  201, 204)
 - **Response Headers**: Content-Type and X-API-Aggregation-Completed
 - **JSON Structure**: Using pykwalify schemas and jmespath queries
 - **Field Presence/Absence**: Ensuring transformations work correctly
