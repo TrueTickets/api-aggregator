@@ -621,7 +621,7 @@ func TestServer_MixedStatusCodes(t *testing.T) {
 }
 
 func TestServer_AllBackendsFail(t *testing.T) {
-	// Both backends return 500 Internal Server Error
+	// Both backends return 5XX errors
 	backendServer1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err := w.Write([]byte(`{"error": "backend 1 failed"}`))
