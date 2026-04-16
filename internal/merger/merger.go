@@ -104,10 +104,22 @@ func (m *Merger) Merge(responses []types.BackendResponse) MergeResult {
 		}
 	}
 
+	statusCode := m.resolveStatusCode(dataStatusCode, noDataStatusCode)
+
+	// For 204 No Content, explicitly signal no body rather than
+	// returning an empty map that could be serialised as `{}`.
+	if statusCode == http.StatusNoContent {
+		return MergeResult{
+			Data:         http.NoBody,
+			AllCompleted: allCompleted,
+			StatusCode:   statusCode,
+		}
+	}
+
 	return MergeResult{
 		Data:         result,
 		AllCompleted: allCompleted,
-		StatusCode:   m.resolveStatusCode(dataStatusCode, noDataStatusCode),
+		StatusCode:   statusCode,
 	}
 }
 

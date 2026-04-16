@@ -4,6 +4,7 @@
 package merger
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ func TestMerger_Merge(t *testing.T) {
 	tests := []struct {
 		name      string
 		responses []types.BackendResponse
-		expected  map[string]interface{}
+		expected  interface{}
 		completed bool
 	}{
 		{
@@ -414,6 +415,23 @@ func TestMerger_Merge(t *testing.T) {
 					},
 				},
 			},
+			completed: true,
+		},
+		{
+			name: "all backends with 204 No Content return no body",
+			responses: []types.BackendResponse{
+				{
+					Backend:    config.Backend{},
+					Data:       nil,
+					StatusCode: 204,
+				},
+				{
+					Backend:    config.Backend{},
+					Data:       nil,
+					StatusCode: 204,
+				},
+			},
+			expected:  http.NoBody,
 			completed: true,
 		},
 	}
