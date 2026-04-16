@@ -290,13 +290,27 @@ task lint
 golangci-lint run
 ```
 
-## API Response Headers
+## Response Behaviour
+
+### Status Codes
+
+The aggregator preserves HTTP status codes from backend responses
+rather than replacing them with a generic `200 OK`:
+
+- **Single backend**: The backend's status code is passed through
+  directly (e.g. `201 Created`, `204 No Content`).
+- **Multiple backends**: The lowest status code among responses that
+  returned data is used. If no backend returned data (e.g. all
+  returned `204`), the response is `204 No Content` with no body.
+- **All backends failed**: Returns `500 Internal Server Error`.
+
+### Response Headers
 
 The service adds the following response headers:
 
 - `X-API-Aggregation-Completed`: `true` if all backends succeeded,
   `false` if some failed
-- `Content-Type`: `application/json`
+- `Content-Type`: `application/json` (omitted for `204 No Content`)
 
 ## Health Check
 

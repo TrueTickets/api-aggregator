@@ -30,6 +30,7 @@ test/integration/            # Integration test suite
 ## Key Features
 
 - **Multi-backend aggregation**: Combines responses from multiple APIs
+- **Status code preservation**: Backend HTTP status codes are passed through (single backend) or resolved using lowest-code-with-data strategy (multiple backends)
 - **Response transformation**: Filtering, grouping, mapping, targeting
 - **Flexible configuration**: YAML-based endpoint and backend configuration
 - **Observability**: OpenTelemetry tracing and metrics

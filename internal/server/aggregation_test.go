@@ -1,4 +1,4 @@
-// Copyright (c) 2025 True Tickets, Inc.
+// Copyright (c) 2025-2026 True Tickets, Inc.
 // SPDX-License-Identifier: MIT
 
 package server
@@ -497,6 +497,232 @@ func TestServer_ConcatFunctionality(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, float64(2), item2["id"])
 	assert.Equal(t, "Item 2", item2["name"])
+}
+
+func TestServer_StatusCodePreservation(t *testing.T) {
+	tests := []struct {
+		name               string
+		backendStatusCode  int
+		backendBody        string
+		expectedStatusCode int
+		expectBody         bool
+	}{
+		{
+			name:               "backend returns 200 OK",
+			backendStatusCode:  http.StatusOK,
+			backendBody:        `{"status": "ok"}`,
+			expectedStatusCode: http.StatusOK,
+			expectBody:         true,
+		},
+		{
+			name:               "backend returns 201 Created",
+			backendStatusCode:  http.StatusCreated,
+			backendBody:        `{"id": 1}`,
+			expectedStatusCode: http.StatusCreated,
+			expectBody:         true,
+		},
+		{
+			name:               "backend returns 204 No Content",
+			backendStatusCode:  http.StatusNoContent,
+			backendBody:        "",
+			expectedStatusCode: http.StatusNoContent,
+			expectBody:         false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			backendServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tt.backendBody != "" {
+					w.Header().Set("Content-Type", "application/json")
+				}
+				w.WriteHeader(tt.backendStatusCode)
+				if tt.backendBody != "" {
+					_, err := w.Write([]byte(tt.backendBody))
+					require.NoError(t, err)
+				}
+			}))
+			defer backendServer.Close()
+
+			cfg := createTestConfig(http.MethodGet, backendServer.URL)
+			server := createTestServer(cfg)
+
+			req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+			w := httptest.NewRecorder()
+
+			server.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatusCode, w.Code)
+			if tt.expectBody {
+				assert.NotEmpty(t, w.Body.String())
+			} else {
+				assert.Empty(t, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestServer_MixedStatusCodes(t *testing.T) {
+	// Backend 1 returns 200 with data
+	backendServer1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"id": 1}`))
+		require.NoError(t, err)
+	}))
+	defer backendServer1.Close()
+
+	// Backend 2 returns 204 No Content
+	backendServer2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer backendServer2.Close()
+
+	cfg := &config.Config{
+		Endpoints: []config.Endpoint{
+			{
+				Endpoint: "/test",
+				Method:   http.MethodGet,
+				Timeout:  5 * time.Second,
+				Encoding: "json",
+				Backends: []config.Backend{
+					{
+						Host:       backendServer1.URL,
+						URLPattern: "/test",
+						Encoding:   "json",
+						Group:      "data",
+					},
+					{
+						Host:       backendServer2.URL,
+						URLPattern: "/test",
+						Encoding:   "json",
+						Group:      "empty",
+					},
+				},
+			},
+		},
+	}
+
+	server := createTestServer(cfg)
+
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	w := httptest.NewRecorder()
+
+	server.ServeHTTP(w, req)
+
+	// When one backend has data (200) and another is empty (204),
+	// the aggregated response should be 200 since there IS data
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Contains(t, response, "data")
+}
+
+func TestServer_AllBackendsFail(t *testing.T) {
+	// Both backends return 5XX errors
+	backendServer1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte(`{"error": "backend 1 failed"}`))
+		require.NoError(t, err)
+	}))
+	defer backendServer1.Close()
+
+	backendServer2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_, err := w.Write([]byte(`{"error": "backend 2 failed"}`))
+		require.NoError(t, err)
+	}))
+	defer backendServer2.Close()
+
+	cfg := &config.Config{
+		Endpoints: []config.Endpoint{
+			{
+				Endpoint: "/test",
+				Method:   http.MethodGet,
+				Timeout:  5 * time.Second,
+				Encoding: "json",
+				Backends: []config.Backend{
+					{
+						Host:       backendServer1.URL,
+						URLPattern: "/test",
+						Encoding:   "json",
+					},
+					{
+						Host:       backendServer2.URL,
+						URLPattern: "/test",
+						Encoding:   "json",
+					},
+				},
+			},
+		},
+	}
+
+	server := createTestServer(cfg)
+
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	w := httptest.NewRecorder()
+
+	server.ServeHTTP(w, req)
+
+	// When all backends fail, the aggregator returns 500
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+	assert.Equal(t, "All backends failed", response["error"])
+}
+
+func TestServer_ErrorAnd204(t *testing.T) {
+	// Backend 1 fails with 500
+	backendServer1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte(`{"error": "backend 1 failed"}`))
+		require.NoError(t, err)
+	}))
+	defer backendServer1.Close()
+
+	// Backend 2 returns 204 No Content
+	backendServer2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer backendServer2.Close()
+
+	cfg := &config.Config{
+		Endpoints: []config.Endpoint{
+			{
+				Endpoint: "/test",
+				Method:   http.MethodGet,
+				Timeout:  5 * time.Second,
+				Encoding: "json",
+				Backends: []config.Backend{
+					{
+						Host:       backendServer1.URL,
+						URLPattern: "/test",
+						Encoding:   "json",
+					},
+					{
+						Host:       backendServer2.URL,
+						URLPattern: "/test",
+						Encoding:   "json",
+					},
+				},
+			},
+		},
+	}
+
+	server := createTestServer(cfg)
+
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	w := httptest.NewRecorder()
+
+	server.ServeHTTP(w, req)
+
+	// With one error and one 204, the successful 204 response wins
+	assert.Equal(t, http.StatusNoContent, w.Code)
+	assert.Empty(t, w.Body.String())
 }
 
 // createTestConfig creates a test configuration for request body forwarding tests

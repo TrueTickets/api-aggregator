@@ -1,9 +1,10 @@
-// Copyright (c) 2025 True Tickets, Inc.
+// Copyright (c) 2025-2026 True Tickets, Inc.
 // SPDX-License-Identifier: MIT
 
 package merger
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ func TestMerger_Merge(t *testing.T) {
 	tests := []struct {
 		name      string
 		responses []types.BackendResponse
-		expected  map[string]interface{}
+		expected  interface{}
 		completed bool
 	}{
 		{
@@ -416,13 +417,141 @@ func TestMerger_Merge(t *testing.T) {
 			},
 			completed: true,
 		},
+		{
+			name: "all backends with 204 No Content return no body",
+			responses: []types.BackendResponse{
+				{
+					Backend:    config.Backend{},
+					Data:       nil,
+					StatusCode: 204,
+				},
+				{
+					Backend:    config.Backend{},
+					Data:       nil,
+					StatusCode: 204,
+				},
+			},
+			expected:  http.NoBody,
+			completed: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, completed := merger.Merge(tt.responses)
-			assert.Equal(t, tt.expected, result)
-			assert.Equal(t, tt.completed, completed)
+			mergeResult := merger.Merge(tt.responses)
+			assert.Equal(t, tt.expected, mergeResult.Data)
+			assert.Equal(t, tt.completed, mergeResult.AllCompleted)
+		})
+	}
+}
+
+func TestMerger_MergeStatusCodes(t *testing.T) {
+	tracer := noop.NewTracerProvider().Tracer("test")
+	m := New(Config{Tracer: tracer})
+
+	tests := []struct {
+		name               string
+		responses          []types.BackendResponse
+		expectedStatusCode int
+	}{
+		{
+			name: "single backend 200",
+			responses: []types.BackendResponse{
+				{
+					Backend:    config.Backend{},
+					Data:       map[string]interface{}{"id": 1},
+					StatusCode: 200,
+				},
+			},
+			expectedStatusCode: 200,
+		},
+		{
+			name: "single backend 201 Created",
+			responses: []types.BackendResponse{
+				{
+					Backend:    config.Backend{},
+					Data:       map[string]interface{}{"id": 1},
+					StatusCode: 201,
+				},
+			},
+			expectedStatusCode: 201,
+		},
+		{
+			name: "single backend 204 No Content",
+			responses: []types.BackendResponse{
+				{
+					Backend:    config.Backend{},
+					Data:       nil,
+					StatusCode: 204,
+				},
+			},
+			expectedStatusCode: 204,
+		},
+		{
+			name: "mixed 200 and 204 returns 200",
+			responses: []types.BackendResponse{
+				{
+					Backend:    config.Backend{Group: "data"},
+					Data:       map[string]interface{}{"id": 1},
+					StatusCode: 200,
+				},
+				{
+					Backend:    config.Backend{Group: "empty"},
+					Data:       nil,
+					StatusCode: 204,
+				},
+			},
+			expectedStatusCode: 200,
+		},
+		{
+			name: "all backends 204",
+			responses: []types.BackendResponse{
+				{
+					Backend:    config.Backend{},
+					Data:       nil,
+					StatusCode: 204,
+				},
+				{
+					Backend:    config.Backend{},
+					Data:       nil,
+					StatusCode: 204,
+				},
+			},
+			expectedStatusCode: 204,
+		},
+		{
+			name: "zero status code defaults to 200",
+			responses: []types.BackendResponse{
+				{
+					Backend:    config.Backend{},
+					Data:       map[string]interface{}{"id": 1},
+					StatusCode: 0,
+				},
+			},
+			expectedStatusCode: 200,
+		},
+		{
+			name: "multiple backends with data use lowest status code",
+			responses: []types.BackendResponse{
+				{
+					Backend:    config.Backend{Group: "a"},
+					Data:       map[string]interface{}{"id": 1},
+					StatusCode: 201,
+				},
+				{
+					Backend:    config.Backend{Group: "b"},
+					Data:       map[string]interface{}{"id": 2},
+					StatusCode: 200,
+				},
+			},
+			expectedStatusCode: 200,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mergeResult := m.Merge(tt.responses)
+			assert.Equal(t, tt.expectedStatusCode, mergeResult.StatusCode)
 		})
 	}
 }

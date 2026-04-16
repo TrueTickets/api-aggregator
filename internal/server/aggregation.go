@@ -1,4 +1,4 @@
-// Copyright (c) 2025 True Tickets, Inc.
+// Copyright (c) 2025-2026 True Tickets, Inc.
 // SPDX-License-Identifier: MIT
 
 package server
@@ -78,18 +78,23 @@ func (s *Server) processMergedResponse(
 	responses []types.BackendResponse,
 ) {
 	// Merge responses
-	mergedData, allCompleted := s.merger.Merge(responses)
+	mergeResult := s.merger.Merge(responses)
 
 	// Log aggregated response at trace level
-	s.logAggregatedResponse(endpoint, mergedData, allCompleted)
+	s.logAggregatedResponse(endpoint, mergeResult.Data, mergeResult.AllCompleted)
 
 	// Set response headers
-	w.Header().Set("X-API-Aggregation-Completed", fmt.Sprintf("%t", allCompleted))
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-API-Aggregation-Completed", fmt.Sprintf("%t", mergeResult.AllCompleted))
 
-	// Write response
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(mergedData); err != nil {
+	// For 204 No Content, don't write a body
+	if mergeResult.StatusCode == http.StatusNoContent {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(mergeResult.StatusCode)
+	if err := json.NewEncoder(w).Encode(mergeResult.Data); err != nil {
 		log.Error().Err(err).Msg("Failed to encode merged response")
 	}
 }
@@ -148,7 +153,7 @@ func (s *Server) aggregateBackends(
 			}
 
 			// Make request
-			data, err := s.client.Request(ctx, client.RequestConfig{
+			result, err := s.client.Request(ctx, client.RequestConfig{
 				Method:   endpoint.Method,
 				URL:      url,
 				Encoding: be.Encoding,
@@ -156,11 +161,15 @@ func (s *Server) aggregateBackends(
 				Body:     body,
 			})
 
-			responses[idx] = types.BackendResponse{
+			resp := types.BackendResponse{
 				Backend: be,
-				Data:    data,
 				Error:   err,
 			}
+			if result != nil {
+				resp.Data = result.Data
+				resp.StatusCode = result.StatusCode
+			}
+			responses[idx] = resp
 		}(i, backend)
 	}
 
