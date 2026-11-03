@@ -178,6 +178,10 @@ func (c *Client) setContentTypeHeader(req *http.Request, encoding string) {
 func (c *Client) makeRequestAndHandleResponse(req *http.Request, cfg RequestConfig) (*RequestResult, error) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		// When CheckRedirect fails, resp contains the status code.
+		if resp != nil {
+			return &RequestResult{StatusCode: resp.StatusCode}, fmt.Errorf("request failed: %w", err)
+		}
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer func() {

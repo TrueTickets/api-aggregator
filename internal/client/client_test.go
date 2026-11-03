@@ -157,6 +157,26 @@ func TestClient_Request_FailureAfterResponse(t *testing.T) {
 	}
 }
 
+func TestClient_Request_RedirectLoop(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/loop", http.StatusFound)
+	}))
+	defer server.Close()
+
+	client := New(Config{
+		HTTPClient: &http.Client{},
+		Tracer:     noop.NewTracerProvider().Tracer("test"),
+		Logger:     zerolog.Nop(),
+	})
+
+	result, err := client.Get(context.Background(), server.URL, "json", nil)
+
+	require.EqualError(t, err, `request failed: Get "/loop": stopped after 10 redirects`)
+	require.NotNil(t, result)
+	assert.Equal(t, http.StatusFound, result.StatusCode)
+	assert.Nil(t, result.Data)
+}
+
 func TestClient_Request_TimeoutBeforeResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
