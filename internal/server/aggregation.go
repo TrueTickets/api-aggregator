@@ -38,6 +38,7 @@ func (s *Server) createEndpointHandler(endpoint config.Endpoint) http.HandlerFun
 			pathParams[key] = routeCtx.URLParams.Values[i]
 		}
 		responses := s.aggregateBackends(timeoutCtx, endpoint, pathParams, r)
+		s.logBackendFailures(endpoint, responses)
 
 		// Handle case where all backends failed
 		if !s.hasSuccessfulResponse(responses) {
@@ -58,6 +59,23 @@ func (s *Server) hasSuccessfulResponse(responses []types.BackendResponse) bool {
 		}
 	}
 	return false
+}
+
+func (s *Server) logBackendFailures(endpoint config.Endpoint, responses []types.BackendResponse) {
+	for _, resp := range responses {
+		if resp.Error == nil {
+			continue
+		}
+		event := s.logger.Warn().
+			Str("endpoint", endpoint.Endpoint).
+			Str("method", endpoint.Method).
+			Str("backend_host", resp.Backend.Host).
+			Err(resp.Error)
+		if resp.StatusCode > 0 {
+			event = event.Int("status_code", resp.StatusCode)
+		}
+		event.Msg("backend request failed")
+	}
 }
 
 // writeErrorResponse writes an error response with the given message
@@ -83,6 +101,10 @@ func (s *Server) processMergedResponse(
 	// Log aggregated response at trace level
 	s.logAggregatedResponse(endpoint, mergeResult.Data, mergeResult.AllCompleted)
 
+	if !mergeResult.AllCompleted {
+		s.logPartialResponse(endpoint)
+	}
+
 	// Set response headers
 	w.Header().Set("X-API-Aggregation-Completed", fmt.Sprintf("%t", mergeResult.AllCompleted))
 
@@ -97,6 +119,14 @@ func (s *Server) processMergedResponse(
 	if err := json.NewEncoder(w).Encode(mergeResult.Data); err != nil {
 		log.Error().Err(err).Msg("Failed to encode merged response")
 	}
+}
+
+func (s *Server) logPartialResponse(endpoint config.Endpoint) {
+	s.logger.Warn().
+		Str("endpoint", endpoint.Endpoint).
+		Str("method", endpoint.Method).
+		Bool("all_completed", false).
+		Msg("partial response")
 }
 
 // logAggregatedResponse logs the aggregated response at trace level

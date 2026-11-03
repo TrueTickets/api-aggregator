@@ -4,6 +4,8 @@
 package server
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -603,7 +605,12 @@ func TestServer_MixedStatusCodes(t *testing.T) {
 		},
 	}
 
-	server := createTestServer(cfg)
+	var logBuf bytes.Buffer
+	server := New(Config{
+		Config: cfg,
+		Tracer: noop.NewTracerProvider().Tracer("test"),
+		Logger: zerolog.New(&logBuf).Level(zerolog.InfoLevel),
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	w := httptest.NewRecorder()
@@ -613,6 +620,8 @@ func TestServer_MixedStatusCodes(t *testing.T) {
 	// When one backend has data (200) and another is empty (204),
 	// the aggregated response should be 200 since there IS data
 	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "true", w.Header().Get("X-API-Aggregation-Completed"))
+	assert.Empty(t, logBuf.String())
 
 	var response map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -659,7 +668,12 @@ func TestServer_AllBackendsFail(t *testing.T) {
 		},
 	}
 
-	server := createTestServer(cfg)
+	var logBuf bytes.Buffer
+	server := New(Config{
+		Config: cfg,
+		Tracer: noop.NewTracerProvider().Tracer("test"),
+		Logger: zerolog.New(&logBuf).Level(zerolog.InfoLevel),
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	w := httptest.NewRecorder()
@@ -673,6 +687,13 @@ func TestServer_AllBackendsFail(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 	assert.Equal(t, "All backends failed", response["error"])
+
+	entries := decodeLogEntries(t, &logBuf)
+	require.Len(t, entries, 2)
+	assert.Equal(t, "backend request failed", entries[0]["message"])
+	assert.Equal(t, backendServer1.URL, entries[0]["backend_host"])
+	assert.Equal(t, "backend request failed", entries[1]["message"])
+	assert.Equal(t, backendServer2.URL, entries[1]["backend_host"])
 }
 
 func TestServer_ErrorAnd204(t *testing.T) {
@@ -713,7 +734,12 @@ func TestServer_ErrorAnd204(t *testing.T) {
 		},
 	}
 
-	server := createTestServer(cfg)
+	var logBuf bytes.Buffer
+	server := New(Config{
+		Config: cfg,
+		Tracer: noop.NewTracerProvider().Tracer("test"),
+		Logger: zerolog.New(&logBuf).Level(zerolog.InfoLevel),
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 	w := httptest.NewRecorder()
@@ -723,6 +749,175 @@ func TestServer_ErrorAnd204(t *testing.T) {
 	// With one error and one 204, the successful 204 response wins
 	assert.Equal(t, http.StatusNoContent, w.Code)
 	assert.Empty(t, w.Body.String())
+	assert.Equal(t, "false", w.Header().Get("X-API-Aggregation-Completed"))
+
+	entries := decodeLogEntries(t, &logBuf)
+	require.Len(t, entries, 2)
+	assert.Equal(t, "backend request failed", entries[0]["message"])
+	assert.Equal(t, map[string]interface{}{
+		zerolog.LevelFieldName: "warn",
+		"endpoint":             "/test",
+		"method":               http.MethodGet,
+		"all_completed":        false,
+		"message":              "partial response",
+	}, entries[1])
+}
+
+func TestServer_BackendFailureWarnings(t *testing.T) {
+	const marker = "SENSITIVE-BODY-MARKER"
+
+	unavailableServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, err := w.Write([]byte(`{"error": "` + marker + `"}`))
+		require.NoError(t, err)
+	}))
+	defer unavailableServer.Close()
+
+	slowServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer slowServer.Close()
+
+	malformedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte("not json"))
+		require.NoError(t, err)
+	}))
+	defer malformedServer.Close()
+
+	cfg := &config.Config{
+		Endpoints: []config.Endpoint{
+			{
+				Endpoint: "/items/{id}",
+				Method:   http.MethodGet,
+				Timeout:  100 * time.Millisecond,
+				Encoding: "json",
+				Backends: []config.Backend{
+					{Host: unavailableServer.URL, URLPattern: "/items/{id}", Encoding: "json"},
+					{Host: slowServer.URL, URLPattern: "/items/{id}", Encoding: "json"},
+					{Host: malformedServer.URL, URLPattern: "/items/{id}", Encoding: "json"},
+				},
+			},
+		},
+	}
+	var logBuf bytes.Buffer
+	server := New(Config{
+		Config: cfg,
+		Tracer: noop.NewTracerProvider().Tracer("test"),
+		Logger: zerolog.New(&logBuf).Level(zerolog.InfoLevel),
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/items/42", http.NoBody)
+	w := httptest.NewRecorder()
+
+	server.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.NotContains(t, logBuf.String(), marker)
+	assert.Equal(t, []map[string]interface{}{
+		{
+			zerolog.LevelFieldName: "warn",
+			"endpoint":             "/items/{id}",
+			"method":               http.MethodGet,
+			"backend_host":         unavailableServer.URL,
+			"error":                "backend returned status 503",
+			"status_code":          float64(http.StatusServiceUnavailable),
+			"message":              "backend request failed",
+		},
+		{
+			zerolog.LevelFieldName: "warn",
+			"endpoint":             "/items/{id}",
+			"method":               http.MethodGet,
+			"backend_host":         slowServer.URL,
+			"error":                fmt.Sprintf("request failed: Get %q: context deadline exceeded", slowServer.URL+"/items/42"),
+			"message":              "backend request failed",
+		},
+		{
+			zerolog.LevelFieldName: "warn",
+			"endpoint":             "/items/{id}",
+			"method":               http.MethodGet,
+			"backend_host":         malformedServer.URL,
+			"error":                "failed to parse json response: invalid character 'o' in literal null (expecting 'u')",
+			"status_code":          float64(http.StatusOK),
+			"message":              "backend request failed",
+		},
+	}, decodeLogEntries(t, &logBuf))
+}
+
+func TestServer_PartialResponseWarning(t *testing.T) {
+	const marker = "SENSITIVE-BODY-MARKER"
+
+	successServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"id": 1}`))
+		require.NoError(t, err)
+	}))
+	defer successServer.Close()
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte(marker))
+		require.NoError(t, err)
+	}))
+	defer failingServer.Close()
+
+	cfg := &config.Config{
+		Endpoints: []config.Endpoint{
+			{
+				Endpoint: "/test",
+				Method:   http.MethodGet,
+				Timeout:  5 * time.Second,
+				Encoding: "json",
+				Backends: []config.Backend{
+					{Host: successServer.URL, URLPattern: "/test", Encoding: "json", Group: "data"},
+					{Host: failingServer.URL, URLPattern: "/test", Encoding: "json", Group: "first"},
+					{Host: failingServer.URL, URLPattern: "/test", Encoding: "json", Group: "second"},
+				},
+			},
+		},
+	}
+	var logBuf bytes.Buffer
+	server := New(Config{
+		Config: cfg,
+		Tracer: noop.NewTracerProvider().Tracer("test"),
+		Logger: zerolog.New(&logBuf).Level(zerolog.InfoLevel),
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
+	w := httptest.NewRecorder()
+
+	server.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "false", w.Header().Get("X-API-Aggregation-Completed"))
+	assert.JSONEq(t, `{"data": {"id": 1}}`, w.Body.String())
+	assert.NotContains(t, logBuf.String(), marker)
+
+	entries := decodeLogEntries(t, &logBuf)
+	require.Len(t, entries, 3)
+	assert.Equal(t, "backend request failed", entries[0]["message"])
+	assert.Equal(t, "backend request failed", entries[1]["message"])
+	assert.Equal(t, map[string]interface{}{
+		zerolog.LevelFieldName: "warn",
+		"endpoint":             "/test",
+		"method":               http.MethodGet,
+		"all_completed":        false,
+		"message":              "partial response",
+	}, entries[2])
+}
+
+func decodeLogEntries(t *testing.T, logBuf *bytes.Buffer) []map[string]interface{} {
+	t.Helper()
+	var entries []map[string]interface{}
+	scanner := bufio.NewScanner(logBuf)
+	for scanner.Scan() {
+		var entry map[string]interface{}
+		require.NoError(t, json.Unmarshal(scanner.Bytes(), &entry))
+		entries = append(entries, entry)
+	}
+	require.NoError(t, scanner.Err())
+	return entries
 }
 
 // createTestConfig creates a test configuration for request body forwarding tests
