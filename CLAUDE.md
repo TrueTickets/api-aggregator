@@ -118,7 +118,7 @@ task integration-test        # Full integration test suite
 
 ## Dependencies
 
-- **Go 1.23+**: Required for build
+- **Go 1.26.10+**: Required for build
 - **Chi router**: HTTP routing
 - **Zerolog**: Structured logging
 - **OpenTelemetry**: Observability
@@ -161,7 +161,7 @@ All configuration can be overridden with environment variables prefixed with `AP
 
 1. **Docker containers not starting**: Check that all required packages are installed (ca-certificates, curl, libc6-compat)
 2. **Integration tests failing**: Ensure Docker Compose is available and ports are not in use
-3. **Build failures**: Check Go version (1.23+ required) and module dependencies
+3. **Build failures**: Check Go version (1.26.10+ required) and module dependencies
 4. **Pre-commit hook failures**: Install required tools (golangci-lint, yamllint, hadolint)
 
 ## Open Source Preparation
