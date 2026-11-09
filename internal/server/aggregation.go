@@ -70,6 +70,7 @@ func (s *Server) logBackendFailures(endpoint config.Endpoint, responses []types.
 			Str("endpoint", endpoint.Endpoint).
 			Str("method", endpoint.Method).
 			Str("backend_host", resp.Backend.Host).
+			Str("backend_url_pattern", resp.Backend.URLPattern).
 			Err(resp.Error)
 		if resp.StatusCode > 0 {
 			event = event.Int("status_code", resp.StatusCode)

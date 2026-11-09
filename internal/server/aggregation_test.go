@@ -820,6 +820,7 @@ func TestServer_BackendFailureWarnings(t *testing.T) {
 			"endpoint":             "/items/{id}",
 			"method":               http.MethodGet,
 			"backend_host":         unavailableServer.URL,
+			"backend_url_pattern":  "/items/{id}",
 			"error":                "backend returned status 503",
 			"status_code":          float64(http.StatusServiceUnavailable),
 			"message":              "backend request failed",
@@ -829,6 +830,7 @@ func TestServer_BackendFailureWarnings(t *testing.T) {
 			"endpoint":             "/items/{id}",
 			"method":               http.MethodGet,
 			"backend_host":         slowServer.URL,
+			"backend_url_pattern":  "/items/{id}",
 			"error":                fmt.Sprintf("request failed: Get %q: context deadline exceeded", slowServer.URL+"/items/42"),
 			"message":              "backend request failed",
 		},
@@ -837,8 +839,66 @@ func TestServer_BackendFailureWarnings(t *testing.T) {
 			"endpoint":             "/items/{id}",
 			"method":               http.MethodGet,
 			"backend_host":         malformedServer.URL,
+			"backend_url_pattern":  "/items/{id}",
 			"error":                "failed to parse json response: invalid character 'o' in literal null (expecting 'u')",
 			"status_code":          float64(http.StatusOK),
+			"message":              "backend request failed",
+		},
+	}, decodeLogEntries(t, &logBuf))
+}
+
+func TestServer_SameHostBackendFailureWarnings(t *testing.T) {
+	sharedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer sharedServer.Close()
+
+	cfg := &config.Config{
+		Endpoints: []config.Endpoint{
+			{
+				Endpoint: "/users/{id}",
+				Method:   http.MethodGet,
+				Timeout:  5 * time.Second,
+				Encoding: "json",
+				Backends: []config.Backend{
+					{Host: sharedServer.URL, URLPattern: "/users/{id}/profile", Encoding: "json"},
+					{Host: sharedServer.URL, URLPattern: "/users/{id}/orders", Encoding: "json"},
+				},
+			},
+		},
+	}
+	var logBuf bytes.Buffer
+	server := New(Config{
+		Config: cfg,
+		Tracer: noop.NewTracerProvider().Tracer("test"),
+		Logger: zerolog.New(&logBuf).Level(zerolog.InfoLevel),
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/users/42", http.NoBody)
+	w := httptest.NewRecorder()
+
+	server.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, []map[string]interface{}{
+		{
+			zerolog.LevelFieldName: "warn",
+			"endpoint":             "/users/{id}",
+			"method":               http.MethodGet,
+			"backend_host":         sharedServer.URL,
+			"backend_url_pattern":  "/users/{id}/profile",
+			"error":                "backend returned status 500",
+			"status_code":          float64(http.StatusInternalServerError),
+			"message":              "backend request failed",
+		},
+		{
+			zerolog.LevelFieldName: "warn",
+			"endpoint":             "/users/{id}",
+			"method":               http.MethodGet,
+			"backend_host":         sharedServer.URL,
+			"backend_url_pattern":  "/users/{id}/orders",
+			"error":                "backend returned status 500",
+			"status_code":          float64(http.StatusInternalServerError),
 			"message":              "backend request failed",
 		},
 	}, decodeLogEntries(t, &logBuf))
