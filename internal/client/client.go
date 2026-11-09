@@ -173,10 +173,15 @@ func (c *Client) setContentTypeHeader(req *http.Request, encoding string) {
 	}
 }
 
-// makeRequestAndHandleResponse executes the HTTP request and processes the response
+// makeRequestAndHandleResponse executes the HTTP request and processes the response.
+// Once a response arrives, failures still return a result carrying its status code.
 func (c *Client) makeRequestAndHandleResponse(req *http.Request, cfg RequestConfig) (*RequestResult, error) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		// When CheckRedirect fails, resp contains the status code.
+		if resp != nil {
+			return &RequestResult{StatusCode: resp.StatusCode}, fmt.Errorf("request failed: %w", err)
+		}
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer func() {
@@ -185,10 +190,12 @@ func (c *Client) makeRequestAndHandleResponse(req *http.Request, cfg RequestConf
 		}
 	}()
 
+	result := &RequestResult{StatusCode: resp.StatusCode}
+
 	// Read response body (Go HTTP client handles decompression automatically)
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return result, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	// Log response at trace level
@@ -197,17 +204,18 @@ func (c *Client) makeRequestAndHandleResponse(req *http.Request, cfg RequestConf
 	}
 
 	// Check for error status codes
-	if err := c.checkStatusCode(resp.StatusCode, body); err != nil {
-		return nil, err
+	if resp.StatusCode >= statusCodeBadRequest {
+		return result, fmt.Errorf("backend returned status %d", resp.StatusCode)
 	}
 
 	// Parse and return response with status code
 	data, err := c.parseResponse(body, cfg.Encoding)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
-	return &RequestResult{Data: data, StatusCode: resp.StatusCode}, nil
+	result.Data = data
+	return result, nil
 }
 
 // logBackendResponse logs trace information for backend responses
@@ -223,17 +231,6 @@ func (c *Client) logBackendResponse(cfg RequestConfig, resp *http.Response, body
 	}
 
 	logEvent.Msg("backend response received")
-}
-
-// checkStatusCode validates the HTTP status code and returns an error if needed
-func (c *Client) checkStatusCode(statusCode int, body []byte) error {
-	if statusCode >= statusCodeBadRequest {
-		if len(body) == 0 {
-			return fmt.Errorf("backend returned status %d with empty body", statusCode)
-		}
-		return fmt.Errorf("backend returned status %d: %s", statusCode, string(body))
-	}
-	return nil
 }
 
 // parseResponse parses the response body based on the encoding
