@@ -29,7 +29,7 @@ We welcome several types of contributions:
 
 ### Prerequisites
 
-- **Go 1.23+**: Required for building the application
+- **Go 1.26.10+**: Required for building the application
 - **Docker**: For containerized testing and development
 - **Task**: For running build commands ([taskfile.dev](https://taskfile.dev))
 - **Git**: For version control
