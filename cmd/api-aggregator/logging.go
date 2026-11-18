@@ -24,6 +24,7 @@ import (
 
 func setupLogger(format string) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.LevelFieldName = "severity"
 
 	if format == "console" {
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
